@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>糖果大作戰：餵食萌怪 Gumi！</title>
+    <!-- Tailwind CSS for UI Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Fredoka One', 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle, #2c1654 0%, #12072b 100%);
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 隱藏捲軸與行動端長按選單 */
+        canvas {
+            touch-action: none;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+
+        /* 卡通按鈕陰影效果 */
+        .btn-cartoon {
+            box-shadow: 0 6px 0 #b45309;
+            transition: all 0.1s ease;
+        }
+        .btn-cartoon:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #b45309;
+        }
+        .btn-cartoon-green {
+            box-shadow: 0 6px 0 #15803d;
+            transition: all 0.1s ease;
+        }
+        .btn-cartoon-green:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #15803d;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center text-white relative">
+
+    <!-- 背景動態裝飾 -->
+    <div class="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
+        <div class="absolute top-10 left-10 w-24 h-24 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute bottom-10 right-10 w-36 h-36 bg-pink-500 rounded-full blur-3xl animate-pulse" style="animation-delay: 2s;"></div>
+    </div>
+
+    <!-- 遊戲主容器 -->
+    <div class="relative w-full max-w-md h-full max-h-[850px] flex flex-col items-center justify-between p-4 z-10">
+        
+        <!-- 頂部資訊欄 -->
+        <div id="top-bar" class="w-full flex items-center justify-between bg-black/40 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 shadow-lg">
+            <!-- 關卡與星星數 -->
+            <div class="flex items-center gap-3">
+                <button id="btn-back" class="w-10 h-10 bg-white/10 hover:bg-white/20 active:scale-95 rounded-xl flex items-center justify-center transition-all">
+                    <i class="fa-solid fa-home text-lg"></i>
+                </button>
+                <div>
+                    <h2 id="level-title" class="text-xl font-bold text-yellow-300 drop-shadow-md">關卡 1</h2>
+                    <p class="text-xs text-purple-200 tracking-wider">餵食 Gumi！</p>
+                </div>
+            </div>
+
+            <!-- 星星展示 -->
+            <div class="flex gap-1 text-2xl" id="stars-indicator">
+                <i class="fa-solid fa-star text-gray-500 drop-shadow"></i>
+                <i class="fa-solid fa-star text-gray-500 drop-shadow"></i>
+                <i class="fa-solid fa-star text-gray-500 drop-shadow"></i>
+            </div>
+
+            <!-- 右側重試 / 提示 / 音量 -->
+            <div class="flex gap-1.5">
+                <button id="btn-hint" class="w-10 h-10 bg-yellow-500/20 hover:bg-yellow-500/40 border border-yellow-500/40 text-yellow-300 active:scale-95 rounded-xl flex items-center justify-center transition-all shadow-md">
+                    <i class="fa-solid fa-lightbulb text-lg"></i>
+                </button>
+                <button id="btn-sound" class="w-10 h-10 bg-white/10 hover:bg-white/20 active:scale-95 rounded-xl flex items-center justify-center transition-all">
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-lg"></i>
+                </button>
+                <button id="btn-retry" class="w-10 h-10 bg-amber-500 hover:bg-amber-400 active:scale-95 text-white rounded-xl flex items-center justify-center transition-all shadow-md">
+                    <i class="fa-solid fa-rotate-right text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 遊戲畫布容器 -->
+        <div class="relative w-full flex-grow my-4 bg-slate-900/40 border-4 border-purple-800/80 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- 提示引導畫面 (覆蓋在畫布上，僅在第 1 關提示) -->
+            <div id="tutorial-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none transition-opacity duration-500 opacity-0">
+                <div class="text-center p-6 animate-bounce">
+                    <i class="fa-solid fa-scissors text-5xl text-red-400 mb-4 drop-shadow-[0_0_15px_rgba(248,113,113,0.6)]"></i>
+                    <h3 class="text-2xl font-bold text-white mb-2">滑動螢幕來割斷繩子！</h3>
+                    <p class="text-sm text-yellow-300">讓糖果掉進怪獸 Gumi 的大嘴巴裡！</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部控制/資訊 -->
+        <div class="w-full text-center text-xs text-purple-300/60 font-sans tracking-wide">
+            滑動切繩 | 點擊泡泡戳破 | 點擊鼓風機吹氣
+        </div>
+    </div>
+
+    <!-- 首頁/主選單 -->
+    <div id="main-menu" class="fixed inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-950 z-50 flex flex-col items-center justify-center p-6">
+        <!-- 飄浮裝飾背景 -->
+        <div class="absolute inset-0 opacity-20 pointer-events-none overflow-hidden" id="menu-decorations"></div>
+
+        <div class="text-center max-w-sm w-full z-10 flex flex-col items-center">
+            <!-- 萌怪標題插圖 -->
+            <div class="relative w-40 h-40 mb-2 animate-bounce" style="animation-duration: 3s;">
+                <svg viewBox="0 0 100 100" class="w-full h-full filter drop-shadow-[0_10px_15px_rgba(0,0,0,0.4)]">
+                    <!-- 身體 -->
+                    <rect x="15" y="15" width="70" height="70" rx="30" fill="#34d399" />
+                    <!-- 斑紋 -->
+                    <circle cx="28" cy="28" r="6" fill="#10b981" />
+                    <circle cx="72" cy="30" r="8" fill="#10b981" />
+                    <!-- 眼睛 -->
+                    <circle cx="35" cy="45" r="14" fill="white" />
+                    <circle cx="37" cy="45" r="6" fill="#0f172a" />
+                    <circle cx="39" cy="43" r="2.5" fill="white" />
+
+                    <circle cx="65" cy="45" r="14" fill="white" />
+                    <circle cx="63" cy="45" r="6" fill="#0f172a" />
+                    <circle cx="65" cy="43" r="2.5" fill="white" />
+                    <!-- 嘴巴 -->
+                    <ellipse cx="50" cy="68" rx="12" ry="6" fill="#ef4444" />
+                    <!-- 牙齒 -->
+                    <polygon points="44,62 47,68 50,62" fill="white" />
+                    <polygon points="50,62 53,68 56,62" fill="white" />
+                    <!-- 腮紅 -->
+                    <circle cx="23" cy="58" r="4" fill="#f472b6" opacity="0.6" />
+                    <circle cx="77" cy="58" r="4" fill="#f472b6" opacity="0.6" />
+                </svg>
+                <!-- 繩子懸掛 of 糖果 -->
+                <div class="absolute -top-12 left-[30px] w-1 h-14 bg-amber-200 origin-top rotate-12 animate-pulse"></div>
+                <div class="absolute -top-[1px] left-[20px] w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg animate-pulse" style="background: radial-gradient(circle at 35% 35%, #ff4d4d, #990000);"></div>
+            </div>
+
+            <!-- 標題 -->
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-400 tracking-wider filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.4)] mb-1">
+                糖果大作戰
+            </h1>
+            <p class="text-lg text-emerald-300 font-bold tracking-widest mb-8 drop-shadow">餵食萌怪 GUMI！</p>
+
+            <!-- 按鈕組 -->
+            <div class="w-full space-y-4 px-6">
+                <button id="btn-play" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-2xl rounded-2xl border-b-8 border-emerald-700 btn-cartoon-green flex items-center justify-center gap-3 tracking-widest">
+                    <i class="fa-solid fa-play"></i> 開始冒險
+                </button>
+                <button id="btn-level-select" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-white font-bold text-xl rounded-2xl border-b-6 border-amber-700 btn-cartoon flex items-center justify-center gap-2 tracking-wide">
+                    <i class="fa-solid fa-map"></i> 選擇關卡
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 關卡選擇選單 -->
+    <div id="level-menu" class="fixed inset-0 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 z-40 hidden flex-col items-center justify-center p-6">
+        <div class="max-w-md w-full z-10 flex flex-col h-full justify-between py-8">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-yellow-300 mb-2 drop-shadow-md">選擇精彩關卡</h2>
+                <p class="text-sm text-purple-200">一關比一關更具挑戰性唷！</p>
+            </div>
+
+            <!-- 關卡網格 -->
+            <div class="grid grid-cols-2 gap-4 my-8 overflow-y-auto max-h-[60vh] px-2" id="level-grid">
+                <!-- 關卡按鈕會由 JS 動態渲染 -->
+            </div>
+
+            <button id="btn-level-back" class="w-full py-3.5 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold text-lg rounded-2xl shadow-lg transition-all border-b-4 border-slate-900">
+                <i class="fa-solid fa-arrow-left mr-2"></i> 返回主畫面
+            </button>
+        </div>
+    </div>
+
+    <!-- 💡 關卡提示卡彈窗 -->
+    <div id="hint-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-gradient-to-b from-indigo-900 to-slate-950 rounded-3xl p-6 max-w-sm w-full border-4 border-yellow-400 text-center shadow-2xl transform scale-95 transition-all duration-300">
+            <!-- 萌怪頭像插畫 -->
+            <div class="w-20 h-20 mx-auto -mt-16 bg-emerald-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-14 h-14">
+                    <rect x="15" y="15" width="70" height="70" rx="30" fill="#34d399" />
+                    <circle cx="35" cy="45" r="12" fill="white" />
+                    <circle cx="37" cy="45" r="5" fill="#0f172a" />
+                    <circle cx="65" cy="45" r="12" fill="white" />
+                    <circle cx="63" cy="45" r="5" fill="#0f172a" />
+                    <ellipse cx="50" cy="68" rx="10" ry="5" fill="#ef4444" />
+                </svg>
+            </div>
+            <h3 class="text-2xl font-black text-yellow-300 mt-4 mb-3"><i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>Gumi 的過關祕技</h3>
+            
+            <!-- 提示動態說明 -->
+            <div class="bg-white/10 rounded-2xl p-4 mb-6 text-left border border-white/5">
+                <p id="hint-text" class="text-sm text-purple-100 leading-relaxed font-sans"></p>
+            </div>
+
+            <!-- 關閉按鈕 -->
+            <button id="btn-close-hint" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md border-b-4 border-amber-700">
+                我知道了！ <i class="fa-solid fa-check"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 結算畫面 (過關/失敗) -->
+    <div id="result-overlay" class="fixed inset-0 bg-black/80 z-50 hidden flex-col items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-gradient-to-b from-indigo-900 to-purple-950 rounded-3xl p-8 max-w-sm w-full border-4 border-yellow-400 text-center shadow-2xl scale-95 transition-all duration-300 transform" id="result-card">
+            
+            <!-- 大皇冠/獎盃 icon -->
+            <div class="w-24 h-24 mx-auto -mt-20 bg-yellow-400 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-4xl text-amber-800 animate-bounce" id="result-badge">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <h2 id="result-title" class="text-3xl font-black text-yellow-300 mt-6 mb-2 drop-shadow-md">過關成功！</h2>
+            <p id="result-desc" class="text-sm text-purple-200 mb-6">Gumi 開心地吃飽啦！</p>
+
+            <!-- 獲得的星星 -->
+            <div class="flex justify-center gap-3 text-4xl mb-8" id="result-stars">
+                <i class="fa-solid fa-star text-yellow-400 drop-shadow-[0_0_10px_rgba(253,224,71,0.6)]"></i>
+                <i class="fa-solid fa-star text-yellow-400 drop-shadow-[0_0_10px_rgba(253,224,71,0.6)]"></i>
+                <i class="fa-solid fa-star text-gray-500"></i>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="btn-result-home" class="py-3 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md">
+                    <i class="fa-solid fa-home"></i> 主畫面
+                </button>
+                <button id="btn-result-next" class="py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl btn-cartoon-green transition-all shadow-md">
+                    下一關 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button id="btn-result-retry" class="py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-xl btn-cartoon transition-all shadow-md col-span-2 hidden">
+                    再試一次 <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 粒子特效 / 灑花外掛 canvas -->
+    <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-[60] hidden w-full h-full"></canvas>
+
+    <script>
+        // --- 音效與背景音樂(BGM)管理器 (Web Audio API 合成音效) ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.bgmInterval = null;
+                this.bgmStep = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                if (!this.enabled) {
+                    this.stopBGM();
+                } else {
+                    this.startBGM();
+                }
+                return this.enabled;
+            }
+
+            // 啟動動態生成、輕柔動聽的背景音樂 (BGM)
+            startBGM() {
+                if (!this.enabled) return;
+                this.init();
+                if (this.bgmInterval) return;
+
+                // 溫馨愉悅的五聲音階旋律頻率
+                const melody = [
+                    261.63, 329.63, 392.00, 523.25, // C4, E4, G4, C5
+                    440.00, 392.00, 329.63, 293.66, // A4, G4, E4, D4
+                    261.63, 329.63, 392.00, 523.25, // C4, E4, G4, C5
+                    587.33, 523.25, 440.00, 392.00  // D5, C5, A4, G4
+                ];
+
+                this.bgmStep = 0;
+                this.bgmInterval = setInterval(() => {
+                    if (!this.enabled || !this.ctx || this.ctx.state === 'suspended') return;
+                    
+                    const now = this.ctx.currentTime;
+                    
+                    // 1. 每 4 拍播放一個溫暖的低音伴奏 (Bass)
+                    if (this.bgmStep % 4 === 0) {
+                        const bassOsc = this.ctx.createOscillator();
+                        const bassGain = this.ctx.createGain();
+                        
+                        bassOsc.type = 'triangle';
+                        const bassFrequencies = [130.81, 164.81, 146.83, 196.00]; // C3, E3, D3, G3 的低音
+                        const bassFreq = bassFrequencies[Math.floor(this.bgmStep / 4) % bassFrequencies.length];
+                        
+                        bassOsc.frequency.setValueAtTime(bassFreq, now);
+                        bassGain.gain.setValueAtTime(0.05, now);
+                        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                        
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(this.ctx.destination);
+                        bassOsc.start(now);
+                        bassOsc.stop(now + 0.6);
+                    }
+
+                    // 2. 每一拍播放一個輕柔的主旋律音符 (Melody)
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'sine'; // 使用正弦波，聲音非常像水晶音盒一樣輕柔療癒
+                    const freq = melody[this.bgmStep % melody.length];
+                    osc.frequency.setValueAtTime(freq, now);
+                    
+                    gain.gain.setValueAtTime(0.015, now); // 音量調得很輕，適合作為背景音
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+
+                    this.bgmStep++;
+                }, 260); // 115 BPM 左右的舒服速度
+            }
+
+            stopBGM() {
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+
+            // 隨機播放高低振幅的切繩子聲音
+            playCut() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+
+            // 星星收集 (晶瑩剔透的和弦)
+            playStar() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.3); // C6
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+
+            // 吃糖果嚼嚼嚼 (啵啵啵啵)
+            playEat() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                for (let i = 0; i < 3; i++) {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const t = now + i * 0.1;
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, t);
+                    osc.frequency.exponentialRampToValueAtTime(300, t + 0.08);
+
+                    gain.gain.setValueAtTime(0.15, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(t);
+                    osc.stop(t + 0.08);
+                }
+            }
+
+            // 糖果掉落哭泣 (哀鳴聲)
+            playCry() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(200, now + 0.5);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+
+            // 泡泡戳破 (啵！)
+            playPop() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            // 鼓風機風聲
+            playBlow() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(250, now + 0.2);
+
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+
+            // 完美通關和弦
+            playWin() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const chords = [261.63, 329.63, 392.00, 523.25]; // C major chord
+                chords.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const t = now + idx * 0.1;
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 2, t + 0.5);
+
+                    gain.gain.setValueAtTime(0.15, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(t);
+                    osc.stop(t + 0.6);
+                });
+            }
+        }
+
+        const sound = new SoundEffects();
+
+        // --- 關卡設定與對應秘技提示說明 (已擴充至 10 個趣味關卡) ---
+        const LEVELS = [
+            {
+                id: 1,
+                name: "關卡 1: 新手切繩術",
+                hint: true,
+                hintText: "✨ <b>新手割繩學：</b><br>在畫面中用手指劃過連接糖果的黃褐色繩索。糖果會順應物理重力向下掉落，收集星星並剛好落進下方 Gumi 的大嘴巴裡唷！",
+                gumi: { x: 200, y: 550, r: 40 },
+                candy: { x: 200, y: 220, r: 16 },
+                ropes: [
+                    { pinX: 200, pinY: 80, length: 150, segments: 12 }
+                ],
+                stars: [
+                    { x: 200, y: 350, r: 17 },
+                    { x: 130, y: 420, r: 17 },
+                    { x: 270, y: 420, r: 17 }
+                ],
+                bubbles: [],
+                blowers: [],
+                pegs: []
+            },
+            {
+                id: 2,
+                name: "關卡 2: 漂浮的泡泡",
+                hint: false,
+                hintText: "🎈 <b>泡泡漂浮特技：</b><br>切斷繩子，讓糖果落入下方的藍色泡泡中。一旦進入泡泡，糖果就會反重力漂浮上升！當它飄到中上方 Gumi 嘴邊的瞬間，<b>點擊泡泡</b>將牠戳破，糖果就會掉進 Gumi 口中了！",
+                gumi: { x: 200, y: 240, r: 40 },
+                candy: { x: 200, y: 140, r: 16 },
+                ropes: [
+                    { pinX: 100, pinY: 80, length: 150, segments: 12 }
+                ],
+                stars: [
+                    { x: 140, y: 220, r: 17 },
+                    { x: 200, y: 460, r: 17 },
+                    { x: 260, y: 360, r: 17 }
+                ],
+                bubbles: [
+                    { x: 200, y: 460, r: 30 }
+                ],
+                blowers: [],
+                pegs: []
+            },
+            {
+                id: 3,
+                name: "關卡 3: 泡泡與鼓風機",
+                hint: false,
+                hintText: "💨 <b>Gumi 降速密技（已施加慢速魔法）：</b><br>1. 割斷左上的繩子，讓糖果掉進泡泡中。<br>2. <b>這關的泡泡現在飄得非常慢！</b><br>3. 當泡泡緩緩飄起時，<b>點擊左邊的「鼓風機」</b>把它推向右側。<br>4. 看到泡泡慢條斯理地飄到 Gumi 頭頂正上方時，再輕鬆<b>點一下泡泡戳破</b>，糖果就會掉進嘴巴囉！",
+                gumi: { x: 300, y: 220, r: 40 }, 
+                candy: { x: 100, y: 480, r: 16 }, 
+                ropes: [
+                    { pinX: 100, pinY: 340, length: 140, segments: 12 }
+                ],
+                stars: [
+                    { x: 100, y: 400, r: 17 },
+                    { x: 200, y: 280, r: 17 },
+                    { x: 300, y: 340, r: 17 }
+                ],
+                bubbles: [
+                    { x: 100, y: 550, r: 32 }
+                ],
+                blowers: [
+                    { x: 50, y: 320, r: 24, angle: 0, force: 0.15 } 
+                ],
+                pegs: [
+                    { x: 220, y: 400, r: 15 }
+                ]
+            },
+            {
+                id: 4,
+                name: "關卡 4: 左右為難的繩網",
+                hint: false,
+                hintText: "⏳ <b>神擺盪切繩流：</b><br>糖果被左右兩根繩索共同拉住，如果直接全切斷會直直落入深淵！<br>先<b>切斷其中一邊的繩子</b>（例如右側），讓糖果像鞦韆一樣往左側劇烈擺盪、吃完兩旁的星星。當盪回中央最合適的軌跡時，再切斷最後一根繩子！",
+                gumi: { x: 200, y: 540, r: 40 },
+                candy: { x: 200, y: 350, r: 16 },
+                ropes: [
+                    { pinX: 80, pinY: 200, length: 180, segments: 14 },
+                    { pinX: 320, pinY: 200, length: 180, segments: 14 }
+                ],
+                stars: [
+                    { x: 200, y: 250, r: 17 },
+                    { x: 100, y: 420, r: 17 },
+                    { x: 300, y: 420, r: 17 }
+                ],
+                bubbles: [],
+                blowers: [],
+                pegs: [
+                    { x: 150, y: 480, r: 12 },
+                    { x: 250, y: 480, r: 12 }
+                ]
+            },
+            {
+                id: 5,
+                name: "關卡 5: 終極高空考驗",
+                hint: false,
+                hintText: "🏆 <b>終極機關大師：</b><br>結合了雙繩索、中央泡泡和兩側的鼓風機！<br>利用左右切斷的擺盪吃掉星星後讓糖果落入中央泡泡，藉由<b>左右兩個鼓風機交互吹氣</b>，控制泡泡在空中左右移位，拿滿兩邊高空的星星，再餵給底部的 Gumi！",
+                gumi: { x: 200, y: 560, r: 40 },
+                candy: { x: 200, y: 250, r: 16 },
+                ropes: [
+                    { pinX: 100, pinY: 100, length: 170, segments: 12 },
+                    { pinX: 300, pinY: 100, length: 170, segments: 12 }
+                ],
+                stars: [
+                    { x: 200, y: 160, r: 17 },
+                    { x: 80, y: 400, r: 17 },
+                    { x: 320, y: 400, r: 17 }
+                ],
+                bubbles: [
+                    { x: 200, y: 340, r: 32 }
+                ],
+                blowers: [
+                    { x: 50, y: 450, r: 24, angle: 0, force: 0.13 },
+                    { x: 350, y: 450, r: 24, angle: Math.PI, force: 0.13 }
+                ],
+                pegs: [
+                    { x: 200, y: 460, r: 18 }
+                ]
+            },
+            {
+                id: 6,
+                name: "關卡 6: 雙向風道大迷宮",
+                hint: false,
+                hintText: "🌀 <b>風道大迷宮：</b><br>1. 割斷上方繩子讓糖果落入泡泡中。<br>2. 泡泡往上飄時，<b>點擊左側或右側吹風機</b>來靈活調整左右位置，小心避開中央的兩根阻擋釘子！<br>3. 收集完所有的星星後，在 Gumi 頭頂將泡泡戳破！",
+                gumi: { x: 200, y: 580, r: 40 },
+                candy: { x: 200, y: 150, r: 16 },
+                ropes: [
+                    { pinX: 200, pinY: 70, length: 110, segments: 10 }
+                ],
+                stars: [
+                    { x: 100, y: 300, r: 17 },
+                    { x: 300, y: 300, r: 17 },
+                    { x: 200, y: 440, r: 17 }
+                ],
+                bubbles: [
+                    { x: 200, y: 350, r: 32 }
+                ],
+                blowers: [
+                    { x: 50, y: 300, r: 24, angle: 0, force: 0.15 },
+                    { x: 350, y: 400, r: 24, angle: Math.PI, force: 0.15 }
+                ],
+                pegs: [
+                    { x: 150, y: 480, r: 15 },
+                    { x: 250, y: 480, r: 15 }
+                ]
+            },
+            {
+                id: 7,
+                name: "關卡 7: 泡泡電梯",
+                hint: false,
+                hintText: "🛗 <b>泡泡電梯：</b><br>1. 糖果在右下方擺盪，割斷後讓它落入下方的泡泡。<br>2. 泡泡會向上飄，使用<b>右側吹風機向左吹風</b>，讓糖果繞過中間的藍色防線（大釘子）！<br>3. 飄到左側 Gumi 正上方時戳破過關！",
+                gumi: { x: 100, y: 200, r: 40 },
+                candy: { x: 300, y: 550, r: 16 },
+                ropes: [
+                    { pinX: 300, pinY: 420, length: 140, segments: 12 }
+                ],
+                stars: [
+                    { x: 300, y: 300, r: 17 },
+                    { x: 200, y: 200, r: 17 },
+                    { x: 100, y: 320, r: 17 }
+                ],
+                bubbles: [
+                    { x: 300, y: 350, r: 32 }
+                ],
+                blowers: [
+                    { x: 350, y: 250, r: 24, angle: Math.PI, force: 0.16 }
+                ],
+                pegs: [
+                    { x: 200, y: 280, r: 18 }
+                ]
+            },
+            {
+                id: 8,
+                name: "關卡 8: 驚險彈珠台",
+                hint: false,
+                hintText: "🎯 <b>驚險彈珠台：</b><br>1. 這關<b>完全沒有泡泡與風扇</b>，純粹考驗彈跳力！<br>2. 割斷其中一邊會讓糖果往下擺，利用底下的眾多釘子進行瘋狂反彈！<br>3. 收集完左右兩側的星星，最後精確彈進最下方的 Gumi 嘴巴中過關！",
+                gumi: { x: 200, y: 620, r: 40 },
+                candy: { x: 200, y: 150, r: 16 },
+                ropes: [
+                    { pinX: 120, pinY: 100, length: 150, segments: 12 },
+                    { pinX: 280, pinY: 100, length: 150, segments: 12 }
+                ],
+                stars: [
+                    { x: 100, y: 400, r: 17 },
+                    { x: 300, y: 400, r: 17 },
+                    { x: 200, y: 500, r: 17 }
+                ],
+                bubbles: [],
+                blowers: [],
+                pegs: [
+                    { x: 150, y: 300, r: 15 },
+                    { x: 250, y: 300, r: 15 },
+                    { x: 200, y: 380, r: 15 },
+                    { x: 110, y: 480, r: 12 },
+                    { x: 290, y: 480, r: 12 }
+                ]
+            },
+            {
+                id: 9,
+                name: "關卡 9: 交叉雙星之網",
+                hint: false,
+                hintText: "🕸️ <b>交叉雙星之網：</b><br>1. 糖果被三根不同角度的繩子牢牢綁在半空中！<br>2. 嘗試先<b>割斷中間的直掛繩</b>，讓糖果能在左右雙繩之間自由擺盪。<br>3. 依據擺動幅度依次割斷左右繩索，利用強大的鐘擺力吃掉底部的星星並落入 Gumi 嘴中！",
+                gumi: { x: 200, y: 540, r: 40 },
+                candy: { x: 200, y: 300, r: 16 },
+                ropes: [
+                    { pinX: 80, pinY: 120, length: 220, segments: 16 },
+                    { pinX: 320, pinY: 120, length: 220, segments: 16 },
+                    { pinX: 200, pinY: 100, length: 210, segments: 15 }
+                ],
+                stars: [
+                    { x: 110, y: 220, r: 17 },
+                    { x: 290, y: 220, r: 17 },
+                    { x: 200, y: 420, r: 17 }
+                ],
+                bubbles: [],
+                blowers: [],
+                pegs: [
+                    { x: 200, y: 200, r: 15 }
+                ]
+            },
+            {
+                id: 10,
+                name: "關卡 10: 糖果大滿貫",
+                hint: false,
+                hintText: "👑 <b>糖果大滿貫（終極試煉！）：</b><br>1. 結合了雙繩索擺盪、中央安全泡泡、以及兩側的高速鼓風機！<br>2. 割斷繩子讓糖果擺盪吃星，並落入中央大泡泡。<br>3. 泡泡緩慢上升時，利用左右兩個風扇左右交替吹氣，收集高空的最後幾顆星星！<br>4. 避開釘子，完美落入口中通關！",
+                gumi: { x: 200, y: 580, r: 40 },
+                candy: { x: 200, y: 150, r: 16 },
+                ropes: [
+                    { pinX: 100, pinY: 100, length: 140, segments: 12 },
+                    { pinX: 300, pinY: 100, length: 140, segments: 12 }
+                ],
+                stars: [
+                    { x: 80, y: 250, r: 17 },
+                    { x: 320, y: 250, r: 17 },
+                    { x: 200, y: 420, r: 17 }
+                ],
+                bubbles: [
+                    { x: 200, y: 320, r: 32 }
+                ],
+                blowers: [
+                    { x: 50, y: 260, r: 24, angle: 0, force: 0.16 },
+                    { x: 350, y: 260, r: 24, angle: Math.PI, force: 0.16 }
+                ],
+                pegs: [
+                    { x: 120, y: 460, r: 16 },
+                    { x: 280, y: 460, r: 16 }
+                ]
+            }
+        ];
+
+        // --- 全域變數與儲存管理 ---
+        let currentLevelIndex = 0;
+        let unlockedLevels = JSON.parse(localStorage.getItem('gumi_unlocked_levels')) || [1];
+        let levelStars = JSON.parse(localStorage.getItem('gumi_level_stars')) || {}; // key: levelId, value: starsCount
+
+        // --- 物理引擎實作 (Verlet Integration) ---
+        class Point {
+            constructor(x, y, isPinned = false) {
+                this.x = x;
+                this.y = y;
+                this.oldX = x;
+                this.oldY = y;
+                this.isPinned = isPinned;
+                this.mass = 1.0;
+            }
+        }
+
+        class Link {
+            constructor(p1, p2, length) {
+                this.p1 = p1;
+                this.p2 = p2;
+                this.length = length;
+                this.isActive = true;
+            }
+        }
+
+        class Rope {
+            constructor(pinX, pinY, length, segments) {
+                this.points = [];
+                this.links = [];
+                this.pinX = pinX;
+                this.pinY = pinY;
+
+                const segmentLength = length / segments;
+
+                // 建立質點
+                for (let i = 0; i <= segments; i++) {
+                    const isPinned = (i === 0);
+                    const py = pinY + i * segmentLength;
+                    this.points.push(new Point(pinX, py, isPinned));
+                }
+
+                // 建立約束連結
+                for (let i = 0; i < segments; i++) {
+                    this.links.push(new Link(this.points[i], this.points[i+1], segmentLength));
+                }
+            }
+
+            update(gravityX, gravityY) {
+                // 更新質點位置
+                for (let p of this.points) {
+                    if (p.isPinned) {
+                        p.x = p.oldX = this.pinX;
+                        p.y = p.oldY = this.pinY;
+                        continue;
+                    }
+
+                    const vx = p.x - p.oldX;
+                    const vy = p.y - p.oldY;
+
+                    p.oldX = p.x;
+                    p.oldY = p.y;
+
+                    p.x += vx + gravityX;
+                    p.y += vy + gravityY;
+                }
+
+                // 彈性約束迭代求解器 (5次迭代使繩子更挺拔真實)
+                for (let i = 0; i < 5; i++) {
+                    for (let link of this.links) {
+                        if (!link.isActive) continue;
+
+                        const dx = link.p2.x - link.p1.x;
+                        const dy = link.p2.y - link.p1.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist === 0) continue;
+
+                        const diff = link.length - dist;
+                        const percent = (diff / dist) / 2;
+
+                        const offsetX = dx * percent;
+                        const offsetY = dy * percent;
+
+                        if (!link.p1.isPinned) {
+                            link.p1.x -= offsetX;
+                            link.p1.y -= offsetY;
+                        }
+                        if (!link.p2.isPinned) {
+                            link.p2.x += offsetX;
+                            link.p2.y += offsetY;
+                        }
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                let first = true;
+                for (let i = 0; i < this.links.length; i++) {
+                    const link = this.links[i];
+                    if (!link.isActive) continue;
+
+                    if (first) {
+                        ctx.moveTo(link.p1.x, link.p1.y);
+                        first = false;
+                    }
+                    ctx.lineTo(link.p2.x, link.p2.y);
+                }
+                ctx.strokeStyle = '#d97706'; // 溫慢粗繩
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // 畫出釘住的點
+                ctx.beginPath();
+                ctx.arc(this.pinX, this.pinY, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#64748b';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        // --- 遊戲邏輯控制模組 ---
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 虛擬解析度 (寬400 x 高700)
+                this.baseWidth = 400;
+                this.baseHeight = 700;
+                
+                this.scale = 1;
+                this.offsetX = 0;
+                this.offsetY = 0;
+
+                // 儲存最新的滑鼠或觸控位置，用於 Gumi 眼神追蹤
+                this.mouseX = 200;
+                this.mouseY = 350;
+
+                this.gravityX = 0;
+                this.gravityY = 0.35; // 擬真重力
+
+                this.ropes = [];
+                this.candy = null;
+                this.gumi = null;
+                this.stars = [];
+                this.bubbles = [];
+                this.blowers = [];
+                this.pegs = [];
+
+                this.cutLines = []; // 切割軌跡
+                this.particles = []; // 特效粒子
+                this.collectedStars = 0;
+                this.gameState = 'PLAYING'; // PLAYING, WIN, LOSE
+                this.blowDuration = 0; // 風向吹拂動畫計時器
+                this.gumiFaceTimer = 0; // Gumi 吃糖咀嚼等表情計時器
+
+                this.initEvents();
+                this.resize();
+            }
+
+            resize() {
+                const parent = this.canvas.parentElement;
+                const containerWidth = parent.clientWidth;
+                const containerHeight = parent.clientHeight;
+
+                // 保持高寬比 4:7
+                const scaleX = containerWidth / this.baseWidth;
+                const scaleY = containerHeight / this.baseHeight;
+                this.scale = Math.min(scaleX, scaleY);
+
+                const displayWidth = this.baseWidth * this.scale;
+                const displayHeight = this.baseHeight * this.scale;
+
+                // 設定 Canvas 在網頁上的 CSS 顯示尺寸
+                this.canvas.style.width = displayWidth + 'px';
+                this.canvas.style.height = displayHeight + 'px';
+
+                // --- 視網膜高畫質 Retina 支援 ---
+                const dpr = window.devicePixelRatio || 1;
+                this.canvas.width = displayWidth * dpr;
+                this.canvas.height = displayHeight * dpr;
+            }
+
+            initEvents() {
+                let isDrawing = false;
+                let lastPt = null;
+
+                const getCanvasCoords = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: (clientX - rect.left) / this.scale,
+                        y: (clientY - rect.top) / this.scale
+                    };
+                };
+
+                const startCut = (e) => {
+                    sound.init(); // 啟用/恢復 AudioContext 確保音樂正常播放
+                    if (this.gameState !== 'PLAYING') return;
+                    isDrawing = true;
+                    const pt = getCanvasCoords(e);
+                    lastPt = pt;
+                    this.cutLines = [pt];
+                    
+                    this.mouseX = pt.x;
+                    this.mouseY = pt.y;
+
+                    // 偵測是否點擊到泡泡
+                    this.checkBubbleClick(pt.x, pt.y);
+                    // 偵測是否點擊到鼓風機
+                    this.checkBlowerClick(pt.x, pt.y);
+                };
+
+                const moveCut = (e) => {
+                    if (this.gameState !== 'PLAYING') return;
+                    const pt = getCanvasCoords(e);
+                    
+                    // 即時更新眼神追隨坐標
+                    this.mouseX = pt.x;
+                    this.mouseY = pt.y;
+
+                    if (!isDrawing) return;
+                    this.cutLines.push(pt);
+                    
+                    // 碰撞切繩子線段
+                    this.checkCuts(lastPt, pt);
+                    lastPt = pt;
+
+                    // 限制軌跡點上限以防過長
+                    if (this.cutLines.length > 15) {
+                        this.cutLines.shift();
+                    }
+                };
+
+                const endCut = () => {
+                    isDrawing = false;
+                    this.cutLines = [];
+                };
+
+                // 滑鼠移動時即時追蹤（不需按下也可以追蹤眼睛）
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const pt = getCanvasCoords(e);
+                    this.mouseX = pt.x;
+                    this.mouseY = pt.y;
+                });
+
+                this.canvas.addEventListener('mousedown', startCut);
+                this.canvas.addEventListener('mousemove', moveCut);
+                window.addEventListener('mouseup', endCut);
+
+                this.canvas.addEventListener('touchstart', startCut, { passive: true });
+                this.canvas.addEventListener('touchmove', moveCut, { passive: true });
+                window.addEventListener('touchend', endCut);
+
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            // 載入關卡
+            loadLevel(index) {
+                currentLevelIndex = index;
+                const lvl = LEVELS[index];
+                document.getElementById('level-title').textContent = lvl.name;
+                
+                // 重設遊戲狀態
+                this.gameState = 'PLAYING';
+                this.collectedStars = 0;
+                this.particles = [];
+                this.cutLines = [];
+                this.gumiFaceTimer = 0;
+                this.updateStarsUI();
+
+                // 啟動 BGM (玩家點擊加載關卡時啟動)
+                sound.startBGM();
+
+                // 關卡引導提示
+                const tutorial = document.getElementById('tutorial-overlay');
+                if (lvl.hint) {
+                    tutorial.classList.remove('opacity-0');
+                    tutorial.classList.add('opacity-100');
+                } else {
+                    tutorial.classList.remove('opacity-100');
+                    tutorial.classList.add('opacity-0');
+                }
+
+                // 1. 初始化糖果
+                this.candy = {
+                    x: lvl.candy.x,
+                    y: lvl.candy.y,
+                    oldX: lvl.candy.x,
+                    oldY: lvl.candy.y,
+                    r: lvl.candy.r,
+                    inBubble: false,
+                    connectedRopes: []
+                };
+
+                // 2. 初始化繩子
+                this.ropes = lvl.ropes.map(r => new Rope(r.pinX, r.pinY, r.length, r.segments));
+
+                // 3. 連接糖果到各繩尾
+                this.ropes.forEach(rope => {
+                    const lastPt = rope.points[rope.points.length - 1];
+                    lastPt.x = this.candy.x;
+                    lastPt.y = this.candy.y;
+                    lastPt.oldX = this.candy.x;
+                    lastPt.oldY = this.candy.y;
+                    
+                    this.candy.connectedRopes.push({
+                        rope: rope,
+                        pointIndex: rope.points.length - 1
+                    });
+                });
+
+                // 4. 複製萌怪、星星、泡泡等元件
+                this.gumi = JSON.parse(JSON.stringify(lvl.gumi));
+                this.stars = JSON.parse(JSON.stringify(lvl.stars)).map(s => ({ ...s, active: true, angle: Math.random() * Math.PI }));
+                this.bubbles = JSON.parse(JSON.stringify(lvl.bubbles)).map(b => ({ ...b, active: true }));
+                this.blowers = JSON.parse(JSON.stringify(lvl.blowers));
+                this.pegs = JSON.parse(JSON.stringify(lvl.pegs));
+            }
+
+            checkCuts(p1, p2) {
+                if (!p1 || !p2) return;
+
+                let didCut = false;
+                this.ropes.forEach(rope => {
+                    rope.links.forEach(link => {
+                        if (link.isActive) {
+                            if (this.lineIntersection(p1, p2, link.p1, link.p2)) {
+                                link.isActive = false;
+                                didCut = true;
+                                this.createSparks((link.p1.x + link.p2.x)/2, (link.p1.y + link.p2.y)/2);
+                                this.updateCandyRopeConnections(rope, link);
+                            }
+                        }
+                    });
+                });
+
+                if (didCut) {
+                    sound.playCut();
+                    document.getElementById('tutorial-overlay').classList.add('opacity-0');
+                }
+            }
+
+            lineIntersection(a, b, c, d) {
+                const det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+                if (det === 0) return false;
+
+                const u = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
+                const v = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
+
+                return (u >= 0 && u <= 1 && v >= 0 && v <= 1);
+            }
+
+            updateCandyRopeConnections(rope, link) {
+                this.candy.connectedRopes.forEach((conn, index) => {
+                    if (conn.rope === rope) {
+                        let pathBroken = false;
+                        for (let i = rope.links.length - 1; i >= 0; i--) {
+                            if (!rope.links[i].isActive) {
+                                pathBroken = true;
+                                break;
+                            }
+                        }
+                        if (pathBroken) {
+                            this.candy.connectedRopes.splice(index, 1);
+                        }
+                    }
+                });
+            }
+
+            checkBubbleClick(x, y) {
+                if (this.candy && this.candy.inBubble) {
+                    const dist = Math.hypot(this.candy.x - x, this.candy.y - y);
+                    if (dist < this.candy.r + 25) {
+                        this.candy.inBubble = false;
+                        sound.playPop();
+                        this.createPopParticles(this.candy.x, this.candy.y, '#38bdf8');
+                    }
+                }
+            }
+
+            checkBlowerClick(x, y) {
+                this.blowers.forEach(b => {
+                    const dist = Math.hypot(b.x - x, b.y - y);
+                    if (dist < b.r + 15) {
+                        sound.playBlow();
+                        this.blowDuration = 15;
+                        
+                        const blowDirX = Math.cos(b.angle);
+                        const blowDirY = Math.sin(b.angle);
+                        
+                        if (this.candy) {
+                            const distToCandy = Math.hypot(this.candy.x - b.x, this.candy.y - b.y);
+                            if (distToCandy < 220) {
+                                const strength = (1 - distToCandy / 220) * b.force * 30;
+                                this.candy.x += blowDirX * strength;
+                                this.candy.y += blowDirY * strength;
+                            }
+                        }
+
+                        for (let i = 0; i < 8; i++) {
+                            this.particles.push({
+                                x: b.x + blowDirX * 20,
+                                y: b.y + blowDirY * 20,
+                                vx: blowDirX * (5 + Math.random() * 5) + (Math.random() - 0.5) * 2,
+                                vy: blowDirY * (5 + Math.random() * 5) + (Math.random() - 0.5) * 2,
+                                size: 3 + Math.random() * 4,
+                                color: 'rgba(255, 255, 255, 0.4)',
+                                life: 1,
+                                decay: 0.03 + Math.random() * 0.03
+                            });
+                        }
+                    }
+                });
+            }
+
+            createSparks(x, y) {
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        size: 2 + Math.random() * 3,
+                        color: '#f59e0b',
+                        life: 1,
+                        decay: 0.04
+                    });
+                }
+            }
+
+            createPopParticles(x, y, color) {
+                for (let i = 0; i < 15; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = 2 + Math.random() * 4;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(ang) * spd,
+                        vy: Math.sin(ang) * spd,
+                        size: 2 + Math.random() * 3,
+                        color: color,
+                        life: 1,
+                        decay: 0.03
+                    });
+                }
+            }
+
+            createWinExplosion() {
+                if (!this.gumi) return;
+                for (let i = 0; i < 40; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = 3 + Math.random() * 8;
+                    this.particles.push({
+                        x: this.gumi.x,
+                        y: this.gumi.y,
+                        vx: Math.cos(ang) * spd,
+                        vy: Math.sin(ang) * spd,
+                        size: 4 + Math.random() * 5,
+                        color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+                        life: 1,
+                        decay: 0.02
+                    });
+                }
+            }
+
+            updateStarsUI() {
+                const container = document.getElementById('stars-indicator');
+                container.innerHTML = '';
+                for (let i = 0; i < 3; i++) {
+                    if (i < this.collectedStars) {
+                        container.innerHTML += '<i class="fa-solid fa-star text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] animate-pulse"></i>';
+                    } else {
+                        container.innerHTML += '<i class="fa-solid fa-star text-gray-600 drop-shadow"></i>';
+                    }
+                }
+            }
+
+            update() {
+                // 1. 更新繩子物理
+                this.ropes.forEach(r => r.update(this.gravityX, this.gravityY));
+
+                // 2. 更新糖果物理
+                if (this.candy && this.gumi && this.gameState === 'PLAYING') {
+                    
+                    // --- 磁力吸入判定 ---
+                    const distToGumi = Math.hypot(this.candy.x - this.gumi.x, this.candy.y - this.gumi.y);
+                    if (distToGumi < 100) { 
+                        const pullForce = 0.08;
+                        this.candy.x += (this.gumi.x - this.candy.x) * pullForce;
+                        this.candy.y += (this.gumi.y - this.candy.y) * pullForce;
+                    }
+
+                    if (this.candy.inBubble) {
+                        // 泡泡漂浮狀態
+                        const vx = (this.candy.x - this.candy.oldX) * 0.98;
+                        const vy = (this.candy.y - this.candy.oldY) * 0.98;
+
+                        this.candy.oldX = this.candy.x;
+                        this.candy.oldY = this.candy.y;
+
+                        this.candy.x += vx;
+                        // 讓泡泡漂浮力整體更平穩舒服，防範玩家來不及點擊，除第三關慢動作（0.25）外，皆使用（0.35）
+                        const floatSpeed = (currentLevelIndex === 2) ? 0.25 : 0.35;
+                        this.candy.y += vy - floatSpeed; 
+                    } else {
+                        // 正常重力掉落
+                        const vx = (this.candy.x - this.candy.oldX) * 0.99;
+                        const vy = (this.candy.y - this.candy.oldY) * 0.99;
+
+                        this.candy.oldX = this.candy.x;
+                        this.candy.oldY = this.candy.y;
+
+                        this.candy.x += vx + this.gravityX;
+                        this.candy.y += vy + this.gravityY;
+                    }
+
+                    // 約束
+                    if (this.candy.connectedRopes.length > 0) {
+                        let targetX = 0;
+                        let targetY = 0;
+                        this.candy.connectedRopes.forEach(conn => {
+                            const p = conn.rope.points[conn.pointIndex];
+                            targetX += p.x;
+                            targetY += p.y;
+                        });
+                        this.candy.x = targetX / this.candy.connectedRopes.length;
+                        this.candy.y = targetY / this.candy.connectedRopes.length;
+
+                        this.candy.connectedRopes.forEach(conn => {
+                            const p = conn.rope.points[conn.pointIndex];
+                            p.x = this.candy.x;
+                            p.y = this.candy.y;
+                        });
+                    }
+
+                    // 3. 碰撞彈性釘子 (Pegs)
+                    this.pegs.forEach(peg => {
+                        const dist = Math.hypot(this.candy.x - peg.x, this.candy.y - peg.y);
+                        const minDist = this.candy.r + peg.r;
+                        if (dist < minDist) {
+                            const overlap = minDist - dist;
+                            const dx = (this.candy.x - peg.x) / dist;
+                            const dy = (this.candy.y - peg.y) / dist;
+
+                            this.candy.x += dx * overlap;
+                            this.candy.y += dy * overlap;
+                            
+                            this.candy.oldX = this.candy.x - dx * 2;
+                            this.candy.oldY = this.candy.y - dy * 2;
+                        }
+                    });
+
+                    // 4. 碰撞泡泡
+                    if (!this.candy.inBubble) {
+                        this.bubbles.forEach(bubble => {
+                            if (bubble.active) {
+                                const dist = Math.hypot(this.candy.x - bubble.x, this.candy.y - bubble.y);
+                                if (dist < bubble.r) {
+                                    bubble.active = false;
+                                    this.candy.inBubble = true;
+                                    sound.playPop();
+                                    this.createPopParticles(bubble.x, bubble.y, '#38bdf8');
+                                }
+                            }
+                        });
+                    }
+
+                    // 5. 碰撞星星
+                    this.stars.forEach(star => {
+                        if (star.active) {
+                            const dist = Math.hypot(this.candy.x - star.x, this.candy.y - star.y);
+                            if (dist < this.candy.r + star.r) {
+                                star.active = false;
+                                this.collectedStars++;
+                                sound.playStar();
+                                this.updateStarsUI();
+                                this.createPopParticles(star.x, star.y, '#fbbf24');
+                            }
+                        }
+                    });
+
+                    // 邊界檢查
+                    if (this.candy.y > this.baseHeight + 50 || this.candy.x < -50 || this.candy.x > this.baseWidth + 50) {
+                        this.gameState = 'LOSE';
+                        sound.playCry();
+                        this.gumiFaceTimer = 60; // Gumi 哭泣
+                        showResultScreen(false);
+                    }
+
+                    // 6. 碰撞萌怪 Gumi
+                    if (distToGumi < this.candy.r + this.gumi.r + 15) {
+                        this.gameState = 'WIN';
+                        sound.playEat();
+                        sound.playWin();
+                        this.gumiFaceTimer = 90;
+                        this.createWinExplosion();
+                        showResultScreen(true, this.collectedStars);
+                        triggerConfetti();
+                    }
+                }
+
+                this.particles.forEach((p, index) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= p.decay;
+                    if (p.life <= 0) {
+                        this.particles.splice(index, 1);
+                    }
+                });
+
+                if (this.blowDuration > 0) this.blowDuration--;
+                if (this.gumiFaceTimer > 0) this.gumiFaceTimer--;
+            }
+
+            draw() {
+                // 清除整個 Canvas 後台快取的大小
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.save();
+                // 依據 Retina 高清像素倍率 (dpr) 與虛擬比例，重新縮放 Context 達到超高清繪製
+                const dpr = window.devicePixelRatio || 1;
+                this.ctx.scale(this.scale * dpr, this.scale * dpr);
+
+                // 網格星空背景
+                this.ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+                this.ctx.lineWidth = 1;
+                for (let i = 0; i < this.baseWidth; i += 40) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(i, 0);
+                    this.ctx.lineTo(i, this.baseHeight);
+                    this.ctx.stroke();
+                }
+                for (let j = 0; j < this.baseHeight; j += 40) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, j);
+                    this.ctx.lineTo(this.baseWidth, j);
+                    this.ctx.stroke();
+                }
+
+                // 1. 彈性釘子
+                this.pegs.forEach(peg => {
+                    const grad = this.ctx.createRadialGradient(peg.x - 3, peg.y - 3, 2, peg.x, peg.y, peg.r);
+                    grad.addColorStop(0, '#94a3b8');
+                    grad.addColorStop(1, '#334155');
+                    this.ctx.beginPath();
+                    this.ctx.arc(peg.x, peg.y, peg.r, 0, Math.PI * 2);
+                    this.ctx.fillStyle = grad;
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.fill();
+                    this.ctx.stroke();
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(peg.x, peg.y, peg.r + 4, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                });
+
+                // 2. 泡泡
+                this.bubbles.forEach(bubble => {
+                    if (bubble.active) {
+                        this.drawBubbleShape(bubble.x, bubble.y, bubble.r);
+                    }
+                });
+
+                // 3. 星星
+                this.stars.forEach(star => {
+                    if (star.active) {
+                        star.angle += 0.02;
+                        this.drawStarShape(star.x, star.y, star.r, star.angle);
+                    }
+                });
+
+                // 4. 鼓風機
+                this.blowers.forEach(b => {
+                    this.ctx.fillStyle = '#475569';
+                    this.ctx.beginPath();
+                    this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    const dx = Math.cos(b.angle);
+                    const dy = Math.sin(b.angle);
+                    this.ctx.strokeStyle = '#334155';
+                    this.ctx.lineWidth = 8;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(b.x, b.y);
+                    this.ctx.lineTo(b.x + dx * (b.r + 10), b.y + dy * (b.r + 10));
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#e2e8f0';
+                    this.ctx.beginPath();
+                    this.ctx.arc(b.x, b.y, b.r - 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    this.ctx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(b.x, b.y, b.r + 4, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                });
+
+                // 5. 繩子
+                this.ropes.forEach(r => r.draw(this.ctx));
+
+                // 6. 萌怪 Gumi
+                this.drawGumi();
+
+                // 7. 糖果
+                if (this.candy && this.gameState === 'PLAYING') {
+                    if (this.candy.inBubble) {
+                        this.drawBubbleShape(this.candy.x, this.candy.y, this.candy.r + 8);
+                    }
+
+                    const cx = this.candy.x;
+                    const cy = this.candy.y;
+                    const cr = this.candy.r;
+
+                    const grad = this.ctx.createRadialGradient(cx - cr*0.3, cy - cr*0.3, 2, cx, cy, cr);
+                    grad.addColorStop(0, '#f87171');
+                    grad.addColorStop(0.5, '#ef4444');
+                    grad.addColorStop(1, '#b91c1c');
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+                    this.ctx.fillStyle = grad;
+                    this.ctx.fill();
+
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2.5;
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, cr * 0.6, 0.2, Math.PI * 0.8);
+                    this.ctx.stroke();
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, cr * 0.3, 3.3, Math.PI * 1.8);
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx - cr*0.4, cy - cr*0.4, cr*0.25, 0, Math.PI*2);
+                    this.ctx.fill();
+                }
+
+                // 8. 切繩殘影
+                if (this.cutLines.length > 1) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.cutLines[0].x, this.cutLines[0].y);
+                    for (let i = 1; i < this.cutLines.length; i++) {
+                        this.ctx.lineTo(this.cutLines[i].x, this.cutLines[i].y);
+                    }
+                    this.ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+                    this.ctx.lineWidth = 5;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.shadowColor = '#f59e0b';
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.stroke();
+                    this.ctx.shadowBlur = 0;
+                }
+
+                // 9. 粒子
+                this.particles.forEach(p => {
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                this.ctx.globalAlpha = 1.0;
+
+                this.ctx.restore();
+            }
+
+            drawStarShape(cx, cy, r, angle) {
+                this.ctx.save();
+                this.ctx.translate(cx, cy);
+                this.ctx.rotate(angle);
+
+                this.ctx.shadowColor = '#fcd34d';
+                this.ctx.shadowBlur = 12;
+
+                this.ctx.beginPath();
+                const spikes = 5;
+                const outerRadius = r;
+                const innerRadius = r / 2;
+                let rot = Math.PI / 2 * 3;
+                let x = 0;
+                let y = 0;
+                const step = Math.PI / spikes;
+
+                this.ctx.moveTo(0, -outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    x = Math.cos(rot) * outerRadius;
+                    y = Math.sin(rot) * outerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = Math.cos(rot) * innerRadius;
+                    y = Math.sin(rot) * innerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+                }
+                this.ctx.lineTo(0, -outerRadius);
+                this.ctx.closePath();
+
+                const grad = this.ctx.createRadialGradient(0, 0, 2, 0, 0, r);
+                grad.addColorStop(0, '#fef08a');
+                grad.addColorStop(1, '#f59e0b');
+
+                this.ctx.fillStyle = grad;
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+
+                this.ctx.restore();
+            }
+
+            drawBubbleShape(cx, cy, r) {
+                this.ctx.save();
+                
+                const grad = this.ctx.createRadialGradient(cx - r*0.2, cy - r*0.2, r * 0.1, cx, cy, r);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+                grad.addColorStop(0.8, 'rgba(56, 189, 248, 0.2)');
+                grad.addColorStop(1, 'rgba(14, 165, 233, 0.6)');
+
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                this.ctx.fillStyle = grad;
+                this.ctx.fill();
+
+                this.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                this.ctx.lineWidth = 1.5;
+                this.ctx.stroke();
+
+                this.ctx.beginPath();
+                this.ctx.arc(cx - r*0.4, cy - r*0.4, r*0.4, Math.PI * 1.0, Math.PI * 1.5);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = 'round';
+                this.ctx.stroke();
+
+                this.ctx.restore();
+            }
+
+            drawGumi() {
+                if (!this.gumi) return; // 防禦性檢查
+                
+                const cx = this.gumi.x;
+                const cy = this.gumi.y;
+                const r = this.gumi.r;
+
+                this.ctx.save();
+
+                // 1. 身體
+                const bodyGrad = this.ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, 5, cx, cy, r);
+                bodyGrad.addColorStop(0, '#34d399');
+                bodyGrad.addColorStop(0.8, '#10b981');
+                bodyGrad.addColorStop(1, '#065f46');
+                
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                this.ctx.fillStyle = bodyGrad;
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 3.5;
+                this.ctx.stroke();
+
+                // 2. 身上斑紋
+                this.ctx.fillStyle = '#047857';
+                this.ctx.beginPath();
+                this.ctx.arc(cx - r*0.6, cy - r*0.4, r*0.15, 0, Math.PI*2);
+                this.ctx.arc(cx + r*0.6, cy - r*0.3, r*0.2, 0, Math.PI*2);
+                this.ctx.fill();
+
+                // 3. 計算眼睛朝向 (優先追隨滑鼠標/觸碰位置，其次追隨糖果)
+                let eyeAngle = 0;
+                let lookDist = 0;
+
+                const dxMouse = this.mouseX - cx;
+                const dyMouse = this.mouseY - cy;
+                const distMouse = Math.hypot(dxMouse, dyMouse);
+
+                // 如果滑鼠在畫布內滑動，眼睛會專注看著指標
+                if (distMouse < 600) { 
+                    eyeAngle = Math.atan2(dyMouse, dxMouse);
+                    lookDist = Math.min(6, distMouse / 35); // 動態瞳孔偏移量
+                } else if (this.candy) {
+                    // 若游標移出，回歸盯著好吃的糖果看
+                    const dxCandy = this.candy.x - cx;
+                    const dyCandy = this.candy.y - cy;
+                    eyeAngle = Math.atan2(dyCandy, dxCandy);
+                    lookDist = Math.min(6, Math.hypot(dxCandy, dyCandy) / 40);
+                }
+
+                const leftEyeX = cx - r*0.35;
+                const rightEyeX = cx + r*0.35;
+                const eyeY = cy - r*0.1;
+                const eyeRadius = r * 0.32;
+                const pupilRadius = r * 0.14;
+
+                // 左白眼球
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(leftEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#065f46';
+                this.ctx.lineWidth = 2.5;
+                this.ctx.stroke();
+
+                // 右白眼球
+                this.ctx.beginPath();
+                this.ctx.arc(rightEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                // 黑瞳孔
+                const pxLeft = leftEyeX + Math.cos(eyeAngle) * lookDist;
+                const pyLeft = eyeY + Math.sin(eyeAngle) * lookDist;
+                const pxRight = rightEyeX + Math.cos(eyeAngle) * lookDist;
+                const pyRight = eyeY + Math.sin(eyeAngle) * lookDist;
+
+                this.ctx.fillStyle = '#0f172a';
+                this.ctx.beginPath();
+                this.ctx.arc(pxLeft, pyLeft, pupilRadius, 0, Math.PI * 2);
+                this.ctx.arc(pxRight, pyRight, pupilRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // 眼睛反光白點
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(pxLeft + 2, pyLeft - 2, 2.5, 0, Math.PI * 2);
+                this.ctx.arc(pxRight + 2, pyRight - 2, 2.5, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // 4. 表情嘴巴
+                const mouthY = cy + r * 0.45;
+                let isCandyClose = false;
+                if (this.candy) {
+                    const dist = Math.hypot(this.candy.x - cx, this.candy.y - cy);
+                    if (dist < 180 && this.candy.y < cy) {
+                        isCandyClose = true;
+                    }
+                }
+
+                if (this.gameState === 'WIN' || (this.gumiFaceTimer > 0 && this.gameState !== 'LOSE')) {
+                    // 開心嚼嚼
+                    this.ctx.strokeStyle = '#ef4444';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy + r*0.35, r*0.3, 0.1 * Math.PI, 0.9 * Math.PI);
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = 'rgba(244,114,182,0.6)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx - r*0.65, cy + r*0.1, 5, 0, Math.PI*2);
+                    this.ctx.arc(cx + r*0.65, cy + r*0.1, 5, 0, Math.PI*2);
+                    this.ctx.fill();
+
+                } else if (this.gameState === 'LOSE' || (this.gameState === 'PLAYING' && !this.candy)) {
+                    // 哭哭 / 委屈
+                    this.ctx.strokeStyle = '#1e3a8a';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy + r * 0.55, r * 0.25, 1.1 * Math.PI, 1.9 * Math.PI);
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#38bdf8';
+                    const tearOffset = (Date.now() / 200) % 15;
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx - r*0.4, cy + r*0.2 + tearOffset, 3, 0, Math.PI*2);
+                    this.ctx.arc(cx + r*0.4, cy + r*0.2 + tearOffset, 3, 0, Math.PI*2);
+                    this.ctx.fill();
+
+                } else if (isCandyClose) {
+                    // 興奮張大嘴！
+                    this.ctx.fillStyle = '#ef4444';
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(cx, mouthY - 5, r*0.32, r*0.18, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    this.ctx.strokeStyle = '#065f46';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cx - 10, mouthY - 14);
+                    this.ctx.lineTo(cx - 5, mouthY - 4);
+                    this.ctx.lineTo(cx, mouthY - 14);
+                    this.ctx.moveTo(cx, mouthY - 14);
+                    this.ctx.lineTo(cx + 5, mouthY - 4);
+                    this.ctx.lineTo(cx + 10, mouthY - 14);
+                    this.ctx.fill();
+
+                } else {
+                    // 微笑嘴巴
+                    this.ctx.fillStyle = '#ef4444';
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(cx, mouthY, r*0.18, r*0.08, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = 'rgba(244,114,182,0.4)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx - r*0.6, cy + r*0.2, 4, 0, Math.PI*2);
+                    this.ctx.arc(cx + r*0.6, cy + r*0.2, 4, 0, Math.PI*2);
+                    this.ctx.fill();
+                }
+
+                this.ctx.restore();
+            }
+        }
+
+        // --- 全域變數實體化 ---
+        let game = null;
+        let animationFrameId = null;
+
+        function gameLoop() {
+            game.update();
+            game.draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- 繽紛紙花特效 (過關灑花) ---
+        const confettiCanvas = document.getElementById('confettiCanvas');
+        const confCtx = confettiCanvas.getContext('2d');
+        let confettiArray = [];
+        let confettiActive = false;
+
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfetti);
+
+        function triggerConfetti() {
+            resizeConfetti();
+            confettiCanvas.classList.remove('hidden');
+            confettiArray = [];
+            confettiActive = true;
+
+            const colors = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b'];
+
+            for (let i = 0; i < 150; i++) {
+                confettiArray.push({
+                    x: Math.random() * confettiCanvas.width,
+                    y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: 4 + Math.random() * 6,
+                    size: 8 + Math.random() * 8,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rot: Math.random() * 360,
+                    rotSpeed: -5 + Math.random() * 10
+                });
+            }
+            animateConfetti();
+        }
+
+        function animateConfetti() {
+            if (!confettiActive) return;
+            confCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            
+            let alive = false;
+            confettiArray.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rot += p.rotSpeed;
+
+                if (p.y < confettiCanvas.height) {
+                    alive = true;
+                }
+
+                confCtx.save();
+                confCtx.translate(p.x, p.y);
+                confCtx.rotate(p.rot * Math.PI / 180);
+                confCtx.fillStyle = p.color;
+                confCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size / 2);
+                confCtx.restore();
+            });
+
+            if (alive) {
+                requestAnimationFrame(animateConfetti);
+            } else {
+                confettiActive = false;
+                confettiCanvas.classList.add('hidden');
+            }
+        }
+
+        // --- UI 控制與導覽邏輯 ---
+
+        // 渲染關卡選擇畫面
+        function renderLevelGrid() {
+            const grid = document.getElementById('level-grid');
+            grid.innerHTML = '';
+
+            LEVELS.forEach((level, index) => {
+                const isUnlocked = unlockedLevels.includes(level.id);
+                const starsCount = levelStars[level.id] || 0;
+
+                const btn = document.createElement('button');
+                btn.className = `p-4 rounded-2xl flex flex-col items-center justify-between transition-all shadow-md h-32 relative ${
+                    isUnlocked 
+                    ? 'bg-gradient-to-b from-indigo-700 to-purple-800 text-white border-2 border-indigo-400 active:scale-95' 
+                    : 'bg-slate-800/80 text-slate-500 border-2 border-slate-700 cursor-not-allowed'
+                }`;
+
+                if (isUnlocked) {
+                    btn.addEventListener('click', () => {
+                        sound.init();
+                        document.getElementById('level-menu').classList.add('hidden');
+                        document.getElementById('main-menu').classList.add('hidden');
+                        game.loadLevel(index);
+                    });
+                }
+
+                const title = document.createElement('span');
+                title.className = "text-xl font-black tracking-wide";
+                title.textContent = `第 ${level.id} 關`;
+                btn.appendChild(title);
+
+                const starsDiv = document.createElement('div');
+                starsDiv.className = "flex gap-1 mt-2 text-sm";
+                if (isUnlocked) {
+                    for (let s = 1; s <= 3; s++) {
+                        if (s <= starsCount) {
+                            starsDiv.innerHTML += '<i class="fa-solid fa-star text-yellow-400"></i>';
+                        } else {
+                            starsDiv.innerHTML += '<i class="fa-solid fa-star text-slate-500"></i>';
+                        }
+                    }
+                } else {
+                    starsDiv.innerHTML = '<i class="fa-solid fa-lock text-lg"></i>';
+                }
+                btn.appendChild(starsDiv);
+
+                grid.appendChild(btn);
+            });
+        }
+
+        // 顯示過關/失敗卡片
+        function showResultScreen(isWin, stars = 0) {
+            const overlay = document.getElementById('result-overlay');
+            const card = document.getElementById('result-card');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const badge = document.getElementById('result-badge');
+            const btnNext = document.getElementById('btn-result-next');
+            const btnRetry = document.getElementById('btn-result-retry');
+            const starsContainer = document.getElementById('result-stars');
+
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                card.classList.remove('scale-95', 'opacity-0');
+                card.classList.add('scale-100', 'opacity-100');
+            }, 50);
+
+            if (isWin) {
+                title.textContent = "過關成功！";
+                title.className = "text-3xl font-black text-yellow-300 mt-6 mb-2 drop-shadow-md";
+                desc.textContent = "Gumi 超級開心，肚子填飽飽！";
+                badge.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+                badge.className = "w-24 h-24 mx-auto -mt-20 bg-yellow-400 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-4xl text-amber-800 animate-bounce";
+                
+                btnNext.classList.remove('hidden');
+                btnRetry.classList.add('hidden');
+
+                starsContainer.innerHTML = '';
+                for (let i = 1; i <= 3; i++) {
+                    if (i <= stars) {
+                        starsContainer.innerHTML += `<i class="fa-solid fa-star text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-pulse" style="animation-delay: ${i*150}ms"></i>`;
+                    } else {
+                        starsContainer.innerHTML += `<i class="fa-solid fa-star text-slate-600"></i>`;
+                    }
+                }
+
+                const currentId = LEVELS[currentLevelIndex].id;
+                const prevRecord = levelStars[currentId] || 0;
+                if (stars > prevRecord) {
+                    levelStars[currentId] = stars;
+                    localStorage.setItem('gumi_level_stars', JSON.stringify(levelStars));
+                }
+
+                const nextId = currentId + 1;
+                if (nextId <= LEVELS.length && !unlockedLevels.includes(nextId)) {
+                    unlockedLevels.push(nextId);
+                    localStorage.setItem('gumi_unlocked_levels', JSON.stringify(unlockedLevels));
+                }
+
+            } else {
+                title.textContent = "挑戰失敗...";
+                title.className = "text-3xl font-black text-red-400 mt-6 mb-2 drop-shadow-md";
+                desc.textContent = "糖果掉下去啦... Gumi 快要餓哭了！";
+                badge.innerHTML = '<i class="fa-solid fa-face-sad-tear"></i>';
+                badge.className = "w-24 h-24 mx-auto -mt-20 bg-red-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-4xl text-white";
+                
+                btnNext.classList.add('hidden');
+                btnRetry.classList.remove('hidden');
+
+                starsContainer.innerHTML = `
+                    <i class="fa-solid fa-star text-slate-600"></i>
+                    <i class="fa-solid fa-star text-slate-600"></i>
+                    <i class="fa-solid fa-star text-slate-600"></i>
+                `;
+            }
+        }
+
+        function createMenuDecorations() {
+            const container = document.getElementById('menu-decorations');
+            container.innerHTML = '';
+            const items = ['fa-star', 'fa-candy-cane', 'fa-cookie', 'fa-circle'];
+            for (let i = 0; i < 15; i++) {
+                const el = document.createElement('i');
+                const randomIcon = items[Math.floor(Math.random() * items.length)];
+                el.className = `fa-solid ${randomIcon} absolute text-white/10 text-3xl animate-pulse`;
+                el.style.left = Math.random() * 100 + '%';
+                el.style.top = Math.random() * 100 + '%';
+                el.style.transform = `rotate(${Math.random() * 360}deg)`;
+                el.style.animationDuration = (2 + Math.random() * 3) + 's';
+                container.appendChild(el);
+            }
+        }
+
+        // --- 事件綁定主程式 ---
+        window.onload = function() {
+            game = new Game();
+            gameLoop();
+            createMenuDecorations();
+
+            // 只要在畫面進行任意點擊，便能恢復 Audio 啟動 BGM (相容現代瀏覽器隱私安全)
+            document.body.addEventListener('click', () => {
+                sound.init();
+                sound.startBGM();
+            }, { once: true });
+
+            // 提示按鈕點擊事件：開啟提示彈窗並渲染對應關卡說明
+            document.getElementById('btn-hint').addEventListener('click', () => {
+                sound.init();
+                const hintModal = document.getElementById('hint-modal');
+                const hintText = document.getElementById('hint-text');
+                
+                // 動態獲取當前關卡的提示文本
+                hintText.innerHTML = LEVELS[currentLevelIndex].hintText || "割斷繩索來收集星星，想辦法把糖果餵給 Gumi 吃吧！";
+                
+                // 顯示彈窗
+                hintModal.classList.remove('hidden');
+            });
+
+            // 關閉提示彈窗
+            document.getElementById('btn-close-hint').addEventListener('click', () => {
+                document.getElementById('hint-modal').classList.add('hidden');
+            });
+
+            // 首頁 [開始冒險]
+            document.getElementById('btn-play').addEventListener('click', () => {
+                sound.init();
+                const lastUnlockedIndex = Math.max(...unlockedLevels.map(id => LEVELS.findIndex(l => l.id === id)));
+                document.getElementById('main-menu').classList.add('hidden');
+                game.loadLevel(lastUnlockedIndex !== -1 ? lastUnlockedIndex : 0);
+            });
+
+            // 首頁 [選擇關卡]
+            document.getElementById('btn-level-select').addEventListener('click', () => {
+                sound.init();
+                renderLevelGrid();
+                document.getElementById('level-menu').classList.remove('hidden');
+            });
+
+            // 關卡選單 [返回]
+            document.getElementById('btn-level-back').addEventListener('click', () => {
+                document.getElementById('level-menu').classList.add('hidden');
+            });
+
+            // 遊戲中 [回到首頁]
+            document.getElementById('btn-back').addEventListener('click', () => {
+                document.getElementById('main-menu').classList.remove('hidden');
+            });
+
+            // 遊戲中 [重新挑戰]
+            document.getElementById('btn-retry').addEventListener('click', () => {
+                game.loadLevel(currentLevelIndex);
+            });
+
+            // 遊戲中 [音效/BGM 總開關]
+            const btnSound = document.getElementById('btn-sound');
+            const soundIcon = document.getElementById('sound-icon');
+            btnSound.addEventListener('click', () => {
+                const isEnabled = sound.toggle();
+                if (isEnabled) {
+                    soundIcon.className = "fa-solid fa-volume-high text-lg";
+                } else {
+                    soundIcon.className = "fa-solid fa-volume-xmark text-lg text-red-400";
+                }
+            });
+
+            // 結算 [回到首頁]
+            document.getElementById('btn-result-home').addEventListener('click', () => {
+                document.getElementById('result-overlay').classList.add('hidden');
+                document.getElementById('main-menu').classList.remove('hidden');
+            });
+
+            // 結算 [下一關]
+            document.getElementById('btn-result-next').addEventListener('click', () => {
+                document.getElementById('result-overlay').classList.add('hidden');
+                const nextIndex = currentLevelIndex + 1;
+                if (nextIndex < LEVELS.length) {
+                    game.loadLevel(nextIndex);
+                } else {
+                    document.getElementById('main-menu').classList.remove('hidden');
+                }
+            });
+
+            // 結算 [失敗重來]
+            document.getElementById('btn-result-retry').addEventListener('click', () => {
+                document.getElementById('result-overlay').classList.add('hidden');
+                game.loadLevel(currentLevelIndex);
+            });
+        };
+    </script>
+</body>
+</html>
